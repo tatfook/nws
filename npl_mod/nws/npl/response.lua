@@ -26,11 +26,16 @@ local status_strings = {
 
 local response = commonlib.gettable("nws.response")
 
+template.render = function(view, context, key, plain)
+	return template.compile(view, key, plain)(context)
+end
 
 function response:new(req)
 	local obj = {}
 	setmetatable(obj, self)
 	self.__index = self
+	obj.template = template
+
 	obj._is_send = false
 	obj.request = req
 	obj.charset = 'utf-8'
@@ -159,10 +164,12 @@ function response:send_file(path, ext)
 		return
 	end
 
+	local statics_dir = nws.config.statics_dir or nws.default_config.statics_dir
+	path = string.match(path, '([^?]*)')
 	path = string.gsub(path, '//', '/')
 	ext = ext or path:match('^.+%.([a-zA-Z0-9]+)$')
 
-	local file = io.open("./" .. path, "rb")
+	local file = io.open(statics_dir .. path, "rb")
 
 	if not file then 
 		self:send("ÎÄ¼þÂ·¾¶´íÎó:" .. path, 404)
@@ -172,6 +179,7 @@ function response:send_file(path, ext)
 	local content = file:read("*a")
 	file:close()
 
+	--nws.log(content)
 	self:set_content_type(mimetype[ext])
 	self:send(content)
 end

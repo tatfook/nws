@@ -27,13 +27,13 @@ monitor() {
 	#local monitor_dir="statics controller model npl_packages index.lua config.lua"
 	local monitor_dir="."
 	local last_exec_time=$((`date '+%s'`))
-	inotifywait --exclude '(part|swx|swp|txt|sh|~)$' -mrq -e modify $monitor_dir | while read line
+	inotifywait --exclude '(part|swx|swp|txt|sh|db|db-shm|db-wal|~)$' -mrq -e modify $monitor_dir | while read line
 	do
 		local current_time=$((`date '+%s'`))
 		let time=current_time-last_exec_time
 		last_exec_time=$current_time
 
-		if [[ $time -gt 10 ]]; then
+		if [[ $time -gt 2 ]]; then
 			echo "restart webserver..."
 			restart_server
 		#else

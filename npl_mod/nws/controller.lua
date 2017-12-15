@@ -109,16 +109,15 @@ function controller:delete(ctx)
 	end
 
 	local url_params = ctx.request.url_params or {}
-	local params = ctx.request:get_params()
-
-	local id = url_params[1] or params.id
-
+	local params = ctx.request:get_params() or {}
+	
+	params[self.model:get_idname()]= url_params[1] or params.id
 
 	if not id then
-		ctx.response:send("缺少资源id", 400)
+		--ctx.response:send("缺少资源id", 400)
 	end
 
-	local err, data = self.model:delete({id=id})
+	local err, data = self.model:delete(params)
 
 	if err then
 		ctx.response:send(err, 400)
@@ -136,7 +135,7 @@ function controller:view(ctx)
 	local params = ctx.request:get_params()
 	local fieldlist = self.model:get_field_list()
 	local datalist = self.model:find(params) or {}
-	local valuelist = {}
+	--local total = self.model:count(params) or 0
 	local querylist = {}
 
 	-- 查询字段
@@ -146,26 +145,19 @@ function controller:view(ctx)
 		end
 	end
 
-	for _, data in ipairs(datalist or {}) do
-		local value = {}
-		for _, field in ipairs(fieldlist or {}) do
-			value[#value+1] = data[field.fieldname] or ""
-		end
-		--value["id"] = self.model:get_value_id(value)
-		valuelist[#valuelist+1] = value
-	end
 	--nws.log(fieldlist)
-
-	
 	local context = {
+		total = total or 5,
 		fieldlist = fieldlist,
-		valuelist = valuelist,
+		datalist = datalist,
 		querylist = querylist,
+		url_prefix = "/" .. self.model:get_tablename(),
 	}
 
 	context.self_data = nws.util.to_json(context)
 
-	ctx.response:render("demo.html", context)
+	local path_prefix = nws.get_nws_path_prefix()
+	ctx.response:send(ctx.response.template.render(path_prefix .. "statics/view.html", context))
 end
 
 return controller
