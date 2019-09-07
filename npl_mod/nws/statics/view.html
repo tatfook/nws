@@ -34,7 +34,7 @@ a:hover {
 	<div ng-controller="mainController">
 		<div ng-show='operation == "VIEW"' style="margin:10px">
 			<form role="form" class="form-inline">
-				<div class="form-group" ng-repeat="obj in self_data.fieldlist track by $index" ng-if="!obj.is_query" style="margin:4px">
+				<div class="form-group" ng-repeat="obj in self_data.fieldlist track by $index" ng-if="obj.is_query" style="margin:4px">
 					<label>\{{obj.aliasname || obj.fieldname}}:</label>
 					<input type="text" class="form-control" id="\{{obj.fieldname}}" />
 				</div>
@@ -157,7 +157,7 @@ app.controller("mainController", ["$scope", "$http", function($scope, $http){
 	<!--删除单条记录-->
 	$scope.delete_one = function(obj){
 		$http({
-			url: $scope.self_data.url_prefix + '/' + obj.id,
+			url: $scope.self_data.url_prefix + '/' + (obj[self_data.tablename+"_id"] || obj._id),
 			method: "DELETE",
 		}).then(function(){
 			$scope.query();

@@ -17,21 +17,28 @@ http.router = router
 http.util = util
 http.filter = filter
 
+local ctx = {}
+
 function http:init(config)
 
 end
 
 -- 静态文件处理
-function http:statics(req, resp)
+function http:statics(ctx)
+	local req, resp = ctx.request, ctx.response
 	local url = req.url
 	local path = url:match("([^?]+)")
 	local ext = path:match('^.+%.([a-zA-Z0-9]+)$')
 	
-	if not ext then
+	local statics_dir = nws.config.statics_dir or nws.default_config.statics_dir
+	local prefix, sub_path = path:match("/([^/]+)(.*)")
+	local dir = statics_dir[prefix or ""]
+	if not dir or not ext then
 		return false
 	end
 
-	resp:send_file(path, ext)
+	path = dir .. sub_path;
+	resp:send_file(path)
 
 	return true
 end
@@ -45,8 +52,9 @@ function http:start(config)
 	handler:init_child_threads()
 
 	local filename = nws.get_nws_path_prefix() .. "npl/handler.lua"
-	local port = config.port or 8888
+	local port = config.server_port or 8888
 
+	--nws.log(filename)
 	NPL.AddPublicFile(filename, -10)
 	NPL.StartNetServer("0.0.0.0", tostring(port))
 end
@@ -56,17 +64,12 @@ function http:handle(msg)
 		return 
 	end
 
-	local req = request:new(msg)
-	local resp = response:new(req)
-	local ctx = {
-		request = req,
-		response = resp,
-	}
+	ctx.request = request:init(msg)
+	ctx.response = response:init(ctx.request)
 
-	log(req.method .. " " .. req.url .. "\n")
-	--log(req.path .. "\n")
+	log(ctx.request.method .. " " .. ctx.request.url .. "\n")
 	
-	if self:statics(req, resp) then
+	if self:statics(ctx) then
 		return
 	end
 
@@ -90,12 +93,15 @@ end
 -- 执行过滤器
 function http:do_filter(ctx, filters, i)
 	if not filters or i > #filters then
-		self:do_handle(ctx)
+		local ret = self:do_handle(ctx)
+		if not ctx.response:is_send() then
+			ctx.response:send(ret)
+		end
 		return 
 	end
 
 	(filters[i])(ctx, function()
-		do_filter(ctx, filters, i+1)
+		http:do_filter(ctx, filters, i+1)
 	end)
 end
 

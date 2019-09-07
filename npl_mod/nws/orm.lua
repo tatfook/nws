@@ -80,8 +80,7 @@ function orm:get_tablename()
 end
 
 function orm:get_idname()
-	--return self._db:get_tablename() .. "_id"
-	return "id"
+	return self._db:get_idname()
 end
 
 function orm:set_db_type(typ)
@@ -105,6 +104,10 @@ function orm:find_one(t)
 	return self._db:find_one(t)
 end
 
+function orm:raw_find(t)
+	return self._db:raw_find(t)
+end
+
 function orm:find(t) 
 	t = t or {}
 	t.page = t.page or 1
@@ -121,11 +124,18 @@ function orm:find(t)
 	return self._db:find(t)
 end
 
+local function get_datetime() 
+	return os.date("%Y-%m-%d %H:%M:%S")
+end
+
 function orm:upsert(q, t)
+	t.update_time = t.update_time or get_datetime()
 	return self._db:upsert(q, t)
 end
 
 function orm:insert(t)
+	t.update_time = t.update_time or get_datetime()
+	t.create_time = t.create_time or t.update_time
 	return self._db:insert(t)
 end
 
@@ -134,6 +144,7 @@ function orm:delete(t)
 end
 
 function orm:update(q, t)
+	t.update_time = t.update_time or get_datetime()
 	return self._db:update(q, t)
 end
 
@@ -142,7 +153,7 @@ function orm:execute(t)
 end
 
 function orm:db()
-	return self._db
+	return self._db:db();
 end
 
 return orm

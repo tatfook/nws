@@ -29,6 +29,9 @@ function controller:set_model_name(model_name)
 	--self.model = nws.import('model.' .. model_name)
 	xpcall(function()
 		self.model = nws.import('model/' .. model_name)
+		if type(self.model) ~= "table" then
+			self.model = nil
+		end
 	end, function(e)
 		log(e)
 	end)
@@ -43,6 +46,7 @@ end
 function controller:get(ctx)
 	if not self.model then
 		ctx.response:send("无效model", 500)
+		return
 	end
 
 	local url_params = ctx.request.url_params or {}
@@ -62,6 +66,7 @@ end
 function controller:put(ctx)
 	if not self.model then
 		ctx.response:send("无效model", 500)
+		return
 	end
 	
 	local url_params = ctx.request.url_params or {}
@@ -70,6 +75,7 @@ function controller:put(ctx)
 
 	if not id then
 		ctx.response:send("缺少资源id", 400)
+		return
 	end
 
 	local err, data = self.model:update({id=id}, params)
@@ -87,6 +93,7 @@ end
 function controller:post(ctx)
 	if not self.model then
 		ctx.response:send("无效model", 500)
+		return
 	end
 
 	local params = ctx.request:get_params()
@@ -104,17 +111,21 @@ end
 
 -- DELETE RESOURCE
 function controller:delete(ctx)
+	nws.log(self.model:get_idname())
 	if not self.model then
 		ctx.response:send("无效model", 500)
+		return
 	end
 
 	local url_params = ctx.request.url_params or {}
 	local params = ctx.request:get_params() or {}
 	
-	params[self.model:get_idname()]= url_params[1] or params.id
+	local id = url_params[1] or params.id
+	params[self.model:get_idname()] = id
 
 	if not id then
-		--ctx.response:send("缺少资源id", 400)
+		ctx.response:send("缺少资源id", 400)
+		return 
 	end
 
 	local err, data = self.model:delete(params)
@@ -131,11 +142,12 @@ end
 function controller:view(ctx)
 	if not self.model then
 		ctx.response:send("无效model", 500)
+		return
 	end
 	local params = ctx.request:get_params()
 	local fieldlist = self.model:get_field_list()
 	local datalist = self.model:find(params) or {}
-	--local total = self.model:count(params) or 0
+	local total = self.model:count(params) or 0
 	local querylist = {}
 
 	-- 查询字段
@@ -147,11 +159,12 @@ function controller:view(ctx)
 
 	--nws.log(fieldlist)
 	local context = {
-		total = total or 5,
+		total = total,
 		fieldlist = fieldlist,
 		datalist = datalist,
 		querylist = querylist,
-		url_prefix = "/" .. self.model:get_tablename(),
+		tablename = self.model:get_tablename(),
+		url_prefix = nws.config.api_url_prefix .. self.model:get_tablename(),
 	}
 
 	context.self_data = nws.util.to_json(context)

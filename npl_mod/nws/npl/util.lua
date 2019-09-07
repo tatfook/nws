@@ -10,13 +10,16 @@ local util = commonlib.gettable("WebServer.util");
 -----------------------------------------------
 ]]
 
-NPL.load("(gl)script/ide/System/os/GetUrl.lua");
+NPL.load("(gl)script/ide/System/os/GetUrl.lua")
+NPL.load("(gl)script/ide/Encoding.lua")
 NPL.load('script/ide/Json.lua')
 NPL.load("(gl)script/ide/System/Encoding/jwt.lua")
 --local requests = require("requests")
 
+local Encoding = commonlib.gettable("commonlib.Encoding");
 local jwt = commonlib.gettable("System.Encoding.jwt")
 local util = commonlib.gettable("nws.util");
+local config = commonlib.gettable("nws.config");
 
 -- Decode an URL-encoded string (see RFC 2396)
 function util.decode_url(str)
@@ -93,22 +96,31 @@ function util.from_json(s)
 end
 
 function util.encode_jwt(payload, secret, expire)
-	return jwt.encode(payload, secret, nil, expire)
+	secret = secret or config.secret or "keepwork"
+	return jwt.encode(payload, secret, "HS256", expire)
 end
 
 function util.decode_jwt(token, secret)
+	secret = secret or config.secret or "keepwork"
 	return jwt.decode(token, secret)
+end
+
+function util.encode_base64(text)
+	return ParaMisc.base64(text)
+	--return Encoding.base64(text)
+end
+
+function util.decode_base64(text)
+	return ParaMisc.unbase64(text)
+	--return Encoding.unbase64(text)
 end
 
 function util.md5(msg)
 	return ParaMisc.md5(msg)
 end
 
--- url
--- method
--- headers
--- data
---res:{headers:{}, text:string, status_code:number}
+--NPL.load("/usr/local/share/lua/5.1")
+--local requests = require("requests")
 --function util.get_url(params)
 	--local method = params.method or "GET"
 
@@ -120,7 +132,6 @@ end
 
 	--if string.lower(method) == "get" then
 		--params.params = params.data
-		----params.data = nil
 	--end
 	--local res = requests.request(method, params)
 
@@ -132,22 +143,31 @@ end
 function util.get_url(params, callback)
 	local method = params.method or "GET"
 
-	if string.lower(method) == "get" then
+	if string.upper(method) == "GET" then
 		params.qs = params.data
 	else
 		params.form = params.data
+		if params.json == nil then
+			params.json = true
+		end
 	end
-	--params.data = nil
 
-	System.os.GetUrl(params, function(code, data)
-		data.status_code = code
-		callback(data)
-		--log(data)
-	end)
-	--local code, data = yield()
+	local _, data = System.os.GetUrl(params)
+	data.status_code = data.rcode
+	return data
+end
 
-	--log(data, true)
-	return nil
+-- 获取当前日期
+function util.get_date()
+	return os.date("%Y-%m-%d")
+end
+
+function util.get_time()
+	return os.date("%H:%M:%S")
+end
+
+function util.get_datetime()
+	return os.date("%Y-%m-%d %H:%M:%S")
 end
 
 return util
